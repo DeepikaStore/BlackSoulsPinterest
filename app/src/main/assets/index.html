@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#080808">
+<title>Black Souls • Gallery</title>
+<style>
+:root{color-scheme:dark;--bg:#080808;--panel:#171717;--muted:#a6a6a6;--accent:#e7e7e7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#fff;font-family:Arial,Helvetica,sans-serif}
+header{position:sticky;top:0;z-index:5;background:rgba(8,8,8,.96);padding:15px 17px 10px}
+.top{height:48px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-size:25px;font-weight:850;letter-spacing:-1.2px}.brand span{color:#b9b9b9}
+.actions{display:flex;gap:19px;align-items:center}.icon{border:0;background:none;color:white;font-size:28px;padding:4px}
+.search-wrap{display:flex;gap:8px;margin-top:10px}
+input{width:100%;border:0;border-radius:14px;background:#242424;color:white;padding:13px 16px;font-size:15px;outline:none}
+.tabs{display:flex;gap:8px;padding:13px 2px 4px;overflow:auto}
+.tab{border:0;background:transparent;color:#aaa;border-radius:20px;padding:8px 14px;font-weight:700;white-space:nowrap}
+.tab.active{background:#f1f1f1;color:#111}
+#status{font-size:12px;color:#aaa;padding:5px 3px;min-height:22px}
+.grid{padding:2px 7px 100px;columns:2;column-gap:9px}
+.tile{display:inline-block;width:100%;margin:0 0 9px;break-inside:avoid;border-radius:17px;overflow:hidden;background:#171717;position:relative}
+.tile img{display:block;width:100%;height:auto;min-height:95px;object-fit:cover;background:#222}
+.caption{padding:8px 9px 10px;font-size:12px;color:#eee;overflow-wrap:anywhere}
+.empty{padding:50px 22px;text-align:center;color:#aaa}
+.bottom{position:fixed;z-index:8;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:12px;background:rgba(8,8,8,.88);padding:8px 12px;border-radius:25px;backdrop-filter:blur(12px)}
+.nav{width:58px;height:58px;border:0;border-radius:19px;background:#202020;color:white;font-size:25px}
+.nav.selected{background:#f2f2f2;color:#111}
+.overlay{display:none;position:fixed;inset:0;background:#000e;z-index:20;align-items:center;justify-content:center;padding:18px}
+.overlay.show{display:flex}.overlay img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:12px}
+.close{position:absolute;top:18px;right:20px;border:0;border-radius:50%;width:42px;height:42px;background:#333;color:white;font-size:23px}
+</style>
+</head>
+<body>
+<header>
+ <div class="top">
+  <div class="brand">◉ Black <span>Souls</span></div>
+  <div class="actions"><button class="icon" onclick="sync()" aria-label="Sync">↻</button><button class="icon" onclick="about()" aria-label="Info">⋯</button></div>
+ </div>
+ <div class="search-wrap"><input id="search" placeholder="Cari gambar Black Souls…" oninput="render()"></div>
+ <div class="tabs">
+  <button class="tab active" onclick="chooseTab('all',this)">Semua</button>
+  <button class="tab" onclick="chooseTab('portrait',this)">Portrait</button>
+  <button class="tab" onclick="chooseTab('other',this)">Lainnya</button>
+ </div>
+ <div id="status">Menyiapkan galeri…</div>
+</header>
+<main id="grid" class="grid"></main>
+<nav class="bottom">
+ <button class="nav selected" onclick="home(this)" title="Home">⌂</button>
+ <button class="nav" onclick="focusSearch(this)" title="Search">⌕</button>
+ <button class="nav" onclick="about()" title="Info">ⓘ</button>
+</nav>
+<div class="overlay" id="viewer" onclick="closeViewer()"><button class="close" onclick="closeViewer()">×</button><img id="large" src="" alt=""></div>
+<script>
+let items=[], currentTab='all';
+function setStatus(s){document.getElementById('status').textContent=s}
+function setSyncProgress(done,total,name){setStatus(`Mengunduh aset ${done}/${total} • ${name}`)}
+function setGalleryData(data){items=Array.isArray(data)?data:[];render();setStatus(items.length?`${items.length} gambar tersedia`:'Belum ada gambar. Tekan ↻ untuk sinkronisasi.')}
+function pageReady(){if(window.Android)Android.pageReady()}
+function sync(){setStatus('Memulai sinkronisasi dari GitGud…');if(window.Android)Android.syncNow()}
+function chooseTab(tab,el){currentTab=tab;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render()}
+function render(){
+ const q=document.getElementById('search').value.toLowerCase();
+ const grid=document.getElementById('grid');grid.innerHTML='';
+ const filtered=items.filter(x=>{
+  const name=(x.name+' '+x.filename).toLowerCase();
+  if(q&&!name.includes(q))return false;
+  if(currentTab==='portrait')return /face|portrait|立ち絵|chara/i.test(name);
+  if(currentTab==='other')return !/face|portrait|立ち絵|chara/i.test(name);
+  return true;
+ });
+ if(!filtered.length){grid.innerHTML='<div class="empty">Belum ada gambar yang cocok.<br>Pastikan aset sudah disinkronkan.</div>';return}
+ filtered.forEach(item=>{
+  const card=document.createElement('article');card.className='tile';
+  const img=document.createElement('img');img.loading='lazy';img.src=item.path;img.alt=item.name;
+  img.onerror=()=>{card.remove()};
+  img.onclick=()=>openViewer(item.path);
+  const cap=document.createElement('div');cap.className='caption';cap.textContent=item.name;
+  card.append(img,cap);grid.appendChild(card);
+ });
+}
+function openViewer(src){document.getElementById('large').src=src;document.getElementById('viewer').classList.add('show')}
+function closeViewer(){document.getElementById('viewer').classList.remove('show')}
+function focusSearch(el){document.getElementById('search').focus();document.querySelectorAll('.nav').forEach(x=>x.classList.remove('selected'));el.classList.add('selected')}
+function home(el){document.getElementById('search').value='';currentTab='all';document.querySelectorAll('.tab').forEach((x,i)=>x.classList.toggle('active',i===0));render();document.querySelectorAll('.nav').forEach(x=>x.classList.remove('selected'));el.classList.add('selected')}
+function about(){setStatus('Sumber: GitGud • Astrologeos/black_souls • Graphics/Pictures')}
+pageReady();
+</script>
+</body></html>
